@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% block title %}Nueva Orden — La Sastrería{% endblock %}
+{% block topbar_title %}Nueva Orden de Trabajo{% endblock %}
+{% block topbar_actions %}
+<span style="font-size:13px;color:var(--text-muted)">Nº {{ numero_previo }}</span>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.orden-grid { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }
+.section-title {
+  font-family: 'Playfair Display', serif; font-size: 15px; color: var(--navy);
+  border-bottom: 2px solid var(--gold); padding-bottom: 8px; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 8px;
+}
+.prenda-row {
+  background: #faf8f5; border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; margin-bottom: 12px; position: relative;
+}
+.prenda-row:hover { border-color: var(--gold); }
+.prenda-remove {
+  position: absolute; top: 10px; right: 10px;
+  background: none; border: none; color: #ccc; cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px;
+}
+.prenda-remove:hover { background: #fee2e2; color: var(--danger); }
+.precio-tipo-selector { display: flex; gap: 8px; }
+.precio-tipo-btn {
+  flex: 1; padding: 8px; border: 1.5px solid var(--border); border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 12px; font-weight: 700;
+  text-align: center; transition: all .2s; color: var(--text-muted);
+}
+.precio-tipo-btn.active-fijo { border-color: var(--navy); background: var(--navy); color: #fff; }
+.precio-tipo-btn.active-variable { border-color: var(--gold); background: var(--gold); color: var(--navy); }
+
+/* RESUMEN */
+.resumen-card {
+  background: var(--navy); border-radius: 12px; padding: 24px;
+  position: sticky; top: 80px; color: #fff;
+}
+.resumen-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold); margin-bottom: 18px; }
+.resumen-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 14px; }
+.resumen-item:last-of-type { border: none; }
+.resumen-total {
+  background: var(--gold); color: var(--navy); border-radius: 8px;
+  padding: 14px; text-align: center; margin-top: 16px;
+}
+.resumen-total-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.resumen-total-value { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; }
+
+/* Autocomplete */
+.autocomplete-wrap { position: relative; }
+.autocomplete-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; background: #fff;
+  border: 1.5px solid var(--border); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.12);
+  z-index: 200; max-height: 200px; overflow-y: auto; display: none;
+}
+.autocomplete-item {
+  padding: 10px 14px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f0ebe4;
+}
+.autocomplete-item:hover { background: #f7f4ef; }
+.autocomplete-item strong { display: block; }
+.autocomplete-item small { color: var(--text-muted); }
+.cliente-selected {
+  background: #d1fae5; border: 1px solid #a7f3d0; border-radius: 8px;
+  padding: 10px 14px; font-size: 13px; display: none; margin-bottom: 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="orden-grid">
+
+  <!-- ── FORMULARIO PRINCIPAL ── -->
+  <div>
+
+    <!-- CLIENTE -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="section-title">👤 Datos del Cliente</div>
+      <div id="clienteSelected" class="cliente-selected"></div>
+      <div class="autocomplete-wrap">
+        <input type="text" class="form-control" id="buscarCliente"
+               placeholder="Buscar cliente existente por nombre..." autocomplete="off">
+        <div class="autocomplete-dropdown" id="clienteDropdown"></div>
+      </div>
+      <div style="text-align:center;margin:12px 0;color:var(--text-muted);font-size:12px">— o agregar nuevo —</div>
+      <div id="clienteForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Nombre <span class="req">*</span></label>
+            <input type="text" class="form-control" id="clienteNombre" placeholder="Nombre completo">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="text" class="form-control" id="clienteTel" placeholder="5555-5555">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Correo Electrónico</label>
+            <input type="email" class="form-control" id="clienteCorreo" placeholder="correo@ejemplo.com">
+            <div class="form-hint">Se enviará resumen automáticamente</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIT</label>
+            <input type="text" class="form-control" id="clienteNit" placeholder="CF o número NIT">
+          </div>
+        </div>
+      </div>
+      <input type="hidden" id="clienteId" value="">
+    </div>
+
+    <!-- ORDEN -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="section-title">📋 Datos de la Orden</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Fecha de Orden <span class="req">*</span></label>
+          <input type="date" class="form-control" id="fechaOrden" value="{{ fecha_hoy }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de Entrega <span class="req">*</span></label>
+          <input type="date" class="form-control" id="fechaEntrega">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas Adicionales <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
+        <textarea class="form-control" id="notas" rows="3" placeholder="Instrucciones especiales, referencias, etc."></textarea>
+      </div>
+    </div>
+
+    <!-- PRENDAS -->
+    <div class="card">
+      <div class="section-title">🧵 Prendas y Servicios</div>
+      <div id="prendasContainer"></div>
+      <button type="button" class="btn btn-outline" onclick="agregarPrenda()" style="width:100%;margin-top:8px">
+        ➕ Agregar Prenda / Servicio
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ── RESUMEN ── -->
+  <div>
+    <div class="resumen-card">
+      <div class="resumen-title">✂ Resumen de Orden</div>
+      <div id="resumenPrendas">
+        <div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px 0">Agregue prendas para ver el resumen</div>
+      </div>
+      <div class="resumen-total">
+        <div class="resumen-total-label">Total a Cobrar</div>
+        <div class="resumen-total-value" id="totalDisplay">Q 0.00</div>
+      </div>
+      <button onclick="guardarOrden()" class="btn btn-gold" style="width:100%;margin-top:16px;padding:13px;font-size:15px">
+        💾 Guardar Orden
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Catálogo en JS -->
+<script>
+const CATALOGO = {{ catalogo | tojson }};
+let prendaCount = 0;
+let clienteSeleccionado = null;
+
+// ── Autocomplete cliente ──
+document.getElementById('buscarCliente').addEventListener('input', async function() {
+  const q = this.value.trim();
+  if (q.length < 2) { document.getElementById('clienteDropdown').style.display='none'; return; }
+  const resp = await fetch(`/api/clientes/buscar?q=${encodeURIComponent(q)}`);
+  const data = await resp.json();
+  const dd = document.getElementById('clienteDropdown');
+  if (!data.length) { dd.style.display='none'; return; }
+  dd.innerHTML = data.map(c => `
+    <div class="autocomplete-item" onclick="seleccionarCliente(${JSON.stringify(c).replace(/"/g,'&quot;')})">
+      <strong>${c.nombre}</strong>
+      <small>📞 ${c.telefono || '-'} | 📧 ${c.correo || '-'} | NIT: ${c.nit || 'CF'}</small>
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+});
+
+function seleccionarCliente(c) {
+  clienteSeleccionado = c;
+  document.getElementById('clienteId').value = c.id;
+  document.getElementById('buscarCliente').value = '';
+  document.getElementById('clienteDropdown').style.display = 'none';
+  document.getElementById('clienteNombre').value = c.nombre;
+  document.getElementById('clienteTel').value = c.telefono || '';
+  document.getElementById('clienteCorreo').value = c.correo || '';
+  document.getElementById('clienteNit').value = c.nit || '';
+  const sel = document.getElementById('clienteSelected');
+  sel.innerHTML = `✅ <strong>${c.nombre}</strong> — Cliente existente seleccionado <button onclick="limpiarCliente()" style="float:right;background:none;border:none;cursor:pointer;color:#666">✖</button>`;
+  sel.style.display = 'block';
+  document.getElementById('clienteForm').style.opacity = '.6';
+}
+
+function limpiarCliente() {
+  clienteSeleccionado = null;
+  document.getElementById('clienteId').value = '';
+  document.getElementById('clienteSelected').style.display = 'none';
+  document.getElementById('clienteNombre').value = '';
+  document.getElementById('clienteTel').value = '';
+  document.getElementById('clienteCorreo').value = '';
+  document.getElementById('clienteNit').value = '';
+  document.getElementById('clienteForm').style.opacity = '1';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrap')) {
+    document.getElementById('clienteDropdown').style.display = 'none';
+  }
+});
+
+// ── Prendas ──
+function agregarPrenda() {
+  prendaCount++;
+  const id = prendaCount;
+  const catalogoOpts = CATALOGO.map(s =>
+    `<option value="${s.nombre}" data-precio="${s.precio_base}" data-tipo="${s.precio_tipo}">${s.nombre} ${s.precio_tipo==='fijo' ? '(Q'+s.precio_base.toFixed(2)+')' : '(variable)'}</option>`
+  ).join('');
+
+  const div = document.createElement('div');
+  div.className = 'prenda-row';
+  div.id = `prenda_${id}`;
+  div.innerHTML = `
+    <button class="prenda-remove" onclick="eliminarPrenda(${id})">✕</button>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr">
+      <div class="form-group">
+        <label class="form-label">Tipo de Prenda <span class="req">*</span></label>
+        <input type="text" class="form-control" id="tipo_${id}" placeholder="Ej: Pantalón, Vestido..." oninput="actualizarResumen()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Servicio del Catálogo</label>
+        <select class="form-control" onchange="aplicarCatalogo(${id}, this)">
+          <option value="">— Seleccionar del catálogo —</option>
+          ${catalogoOpts}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción del Servicio <span class="req">*</span></label>
+      <input type="text" class="form-control" id="desc_${id}" placeholder="Ej: Subir ruedo 5cm, ajuste de cintura..." oninput="actualizarResumen()">
+    </div>
+    <div class="form-grid" style="grid-template-columns:80px 1fr 1fr">
+      <div class="form-group">
+        <label class="form-label">Cantidad</label>
+        <input type="number" class="form-control" id="cant_${id}" value="1" min="1" oninput="calcularSubtotal(${id})">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de Precio</label>
+        <div class="precio-tipo-selector">
+          <button type="button" class="precio-tipo-btn active-fijo" id="btnFijo_${id}" onclick="setPrecioTipo(${id},'fijo')">🔒 Fijo</button>
+          <button type="button" class="precio-tipo-btn" id="btnVar_${id}" onclick="setPrecioTipo(${id},'variable')">✏️ Variable</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio Unitario (Q) <span class="req">*</span></label>
+        <input type="number" class="form-control" id="precio_${id}" value="0" min="0" step="0.01" oninput="calcularSubtotal(${id})">
+      </div>
+    </div>
+    <div style="text-align:right;font-size:14px;color:var(--navy)">
+      Subtotal: <strong id="sub_${id}">Q 0.00</strong>
+    </div>
+    <input type="hidden" id="ptipo_${id}" value="fijo">
+  `;
+  document.getElementById('prendasContainer').appendChild(div);
+  document.getElementById(`tipo_${id}`).focus();
+}
+
+function aplicarCatalogo(id, select) {
+  const opt = select.options[select.selectedIndex];
+  if (!opt.value) return;
+  document.getElementById(`desc_${id}`).value = opt.value;
+  const precio = parseFloat(opt.dataset.precio) || 0;
+  const tipo = opt.dataset.tipo;
+  document.getElementById(`precio_${id}`).value = precio.toFixed(2);
+  setPrecioTipo(id, tipo);
+  calcularSubtotal(id);
+}
+
+function setPrecioTipo(id, tipo) {
+  document.getElementById(`ptipo_${id}`).value = tipo;
+  document.getElementById(`btnFijo_${id}`).className = 'precio-tipo-btn' + (tipo==='fijo' ? ' active-fijo' : '');
+  document.getElementById(`btnVar_${id}`).className = 'precio-tipo-btn' + (tipo==='variable' ? ' active-variable' : '');
+}
+
+function calcularSubtotal(id) {
+  const cant = parseFloat(document.getElementById(`cant_${id}`).value) || 0;
+  const precio = parseFloat(document.getElementById(`precio_${id}`).value) || 0;
+  const sub = cant * precio;
+  document.getElementById(`sub_${id}`).textContent = `Q ${sub.toFixed(2)}`;
+  actualizarResumen();
+}
+
+function eliminarPrenda(id) {
+  document.getElementById(`prenda_${id}`).remove();
+  actualizarResumen();
+}
+
+function actualizarResumen() {
+  const rows = document.querySelectorAll('.prenda-row');
+  let total = 0;
+  let html = '';
+  rows.forEach(row => {
+    const id = row.id.split('_')[1];
+    const tipo = document.getElementById(`tipo_${id}`)?.value || '';
+    const desc = document.getElementById(`desc_${id}`)?.value || '';
+    const cant = parseFloat(document.getElementById(`cant_${id}`)?.value) || 0;
+    const precio = parseFloat(document.getElementById(`precio_${id}`)?.value) || 0;
+    const sub = cant * precio;
+    total += sub;
+    if (tipo || desc) {
+      html += `<div class="resumen-item"><span style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${tipo} — ${desc}">${tipo || desc}</span><span>Q ${sub.toFixed(2)}</span></div>`;
+    }
+  });
+  document.getElementById('resumenPrendas').innerHTML = html || '<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px 0">Sin prendas agregadas</div>';
+  document.getElementById('totalDisplay').textContent = `Q ${total.toFixed(2)}`;
+}
+
+// ── Guardar Orden ──
+async function guardarOrden() {
+  const nombre = document.getElementById('clienteNombre').value.trim();
+  const fechaOrden = document.getElementById('fechaOrden').value;
+  const fechaEntrega = document.getElementById('fechaEntrega').value;
+
+  if (!nombre) { alert('Por favor ingrese el nombre del cliente'); return; }
+  if (!fechaOrden) { alert('Por favor ingrese la fecha de la orden'); return; }
+  if (!fechaEntrega) { alert('Por favor ingrese la fecha de entrega'); return; }
+
+  const rows = document.querySelectorAll('.prenda-row');
+  if (rows.length === 0) { alert('Debe agregar al menos una prenda'); return; }
+
+  const prendas = [];
+  let total = 0;
+  let valido = true;
+
+  rows.forEach(row => {
+    const id = row.id.split('_')[1];
+    const tipo = document.getElementById(`tipo_${id}`).value.trim();
+    const desc = document.getElementById(`desc_${id}`).value.trim();
+    const cant = parseFloat(document.getElementById(`cant_${id}`).value) || 1;
+    const precio = parseFloat(document.getElementById(`precio_${id}`).value) || 0;
+    const ptipo = document.getElementById(`ptipo_${id}`).value;
+    if (!tipo || !desc) { valido = false; return; }
+    const sub = cant * precio;
+    total += sub;
+    prendas.push({ tipo, descripcion: desc, cantidad: cant, precio_unitario: precio, precio_tipo: ptipo, subtotal: sub });
+  });
+
+  if (!valido) { alert('Complete tipo y descripción de todas las prendas'); return; }
+
+  const clienteId = document.getElementById('clienteId').value;
+  const payload = {
+    cliente_id: clienteId || null,
+    cliente_nombre: nombre,
+    cliente_tel: document.getElementById('clienteTel').value,
+    cliente_correo: document.getElementById('clienteCorreo').value,
+    cliente_nit: document.getElementById('clienteNit').value,
+    fecha_orden: fechaOrden,
+    fecha_entrega: fechaEntrega,
+    notas: document.getElementById('notas').value,
+    total: total,
+    prendas: prendas
+  };
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Guardando...';
+
+  try {
+    const resp = await fetch('/ordenes/nueva', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      window.location.href = `/ordenes/${data.orden_id}`;
+    } else {
+      alert('Error al guardar: ' + (data.error || 'Error desconocido'));
+      btn.disabled = false;
+      btn.textContent = '💾 Guardar Orden';
+    }
+  } catch(e) {
+    alert('Error de conexión');
+    btn.disabled = false;
+    btn.textContent = '💾 Guardar Orden';
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — La Sastrería{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('nueva_orden') }}" class="btn btn-gold">➕ Nueva Orden</a>
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Clientes Registrados</div>
+    <div class="stat-value">{{ total_clientes }}</div>
+    <div class="stat-icon">👥</div>
+  </div>
+  <div class="stat-card" style="--accent:#f59e0b">
+    <div class="stat-label">Órdenes Pendientes</div>
+    <div class="stat-value" style="color:#c77d2a">{{ ordenes_pendientes }}</div>
+    <div class="stat-icon">⏳</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Entregas Hoy</div>
+    <div class="stat-value" style="color:{% if entregas_hoy > 0 %}#b03a2e{% else %}#2d2d2d{% endif %}">{{ entregas_hoy }}</div>
+    <div class="stat-icon">🚨</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Ingresos Totales</div>
+    <div class="stat-value" style="color:#2d8a5e; font-size:26px;">Q{{ "%.2f"|format(ingresos_total) }}</div>
+    <div class="stat-icon">💰</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:24px;">
+
+  <!-- Próximas Entregas -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">⏰ Próximas Entregas (7 días)</div>
+      <a href="{{ url_for('calendario') }}" class="btn btn-ghost btn-sm">Ver Calendario →</a>
+    </div>
+    {% if proximas_entregas %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Orden</th>
+            <th>Cliente</th>
+            <th>Fecha Entrega</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in proximas_entregas %}
+          <tr>
+            <td><strong style="color:var(--navy)">{{ o.numero_orden }}</strong></td>
+            <td>{{ o.cliente_nombre }}</td>
+            <td>
+              {% set dias = (o.fecha_entrega | string)[:10] %}
+              <span style="color:{% if dias == hoy %}var(--danger){% elif dias < hoy %}#7f1d1d{% else %}var(--warning){% endif %};font-weight:600">
+                {{ dias }}
+                {% if dias == hoy %} 🔴 HOY{% endif %}
+              </span>
+            </td>
+            <td><a href="{{ url_for('detalle_orden', id=o.id) }}" class="btn btn-ghost btn-sm">Ver</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">✅</div>
+      <p>No hay entregas pendientes en los próximos 7 días</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Órdenes Recientes -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 Órdenes Recientes</div>
+      <a href="{{ url_for('ordenes') }}" class="btn btn-ghost btn-sm">Ver todas →</a>
+    </div>
+    {% if ordenes_recientes %}
+    {% for o in ordenes_recientes %}
+    <a href="{{ url_for('detalle_orden', id=o.id) }}" style="text-decoration:none;display:block">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0ebe4">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--navy)">{{ o.numero_orden }}</div>
+          <div style="font-size:12px;color:var(--text-muted)">{{ o.cliente_nombre }}</div>
+        </div>
+        <div style="text-align:right">
+          <span class="badge badge-{% if o.estado=='pendiente' %}pending{% elif o.estado=='entregado' %}delivered{% else %}cancelled{% endif %}">{{ o.estado }}</span>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Q{{ "%.2f"|format(o.total) }}</div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">📋</div><p>Sin órdenes aún</p></div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

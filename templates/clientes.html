@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Clientes — La Sastrería{% endblock %}
+{% block topbar_title %}Clientes{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('nuevo_cliente') }}" class="btn btn-gold">➕ Nuevo Cliente</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">👥 Base de Clientes</div>
+    <form method="get" style="display:flex;gap:8px">
+      <input type="text" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar por nombre, teléfono, NIT..." style="width:280px">
+      <button type="submit" class="btn btn-primary">🔍 Buscar</button>
+      {% if busqueda %}<a href="{{ url_for('clientes') }}" class="btn btn-ghost">✕</a>{% endif %}
+    </form>
+  </div>
+
+  {% if clientes %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Teléfono</th>
+          <th>Correo</th>
+          <th>NIT</th>
+          <th>Órdenes</th>
+          <th>Última Orden</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in clientes %}
+        <tr>
+          <td>
+            <div style="font-weight:700;color:var(--navy)">{{ c.nombre }}</div>
+            {% if c.notas %}<div style="font-size:11px;color:var(--text-muted)">{{ c.notas[:50] }}{% if c.notas|length > 50 %}...{% endif %}</div>{% endif %}
+          </td>
+          <td>{{ c.telefono or '—' }}</td>
+          <td style="font-size:13px">{{ c.correo or '—' }}</td>
+          <td>{{ c.nit or 'CF' }}</td>
+          <td style="text-align:center">
+            <span class="badge {% if c.total_ordenes > 0 %}badge-delivered{% endif %}">{{ c.total_ordenes }}</span>
+          </td>
+          <td style="font-size:13px;color:var(--text-muted)">{{ c.ultima_orden or '—' }}</td>
+          <td>
+            <a href="{{ url_for('detalle_cliente', id=c.id) }}" class="btn btn-ghost btn-sm">Ver →</a>
+            <a href="{{ url_for('nueva_orden') }}?cliente_id={{ c.id }}" class="btn btn-gold btn-sm">+ Orden</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">👥</div>
+    <p>{% if busqueda %}No se encontraron clientes con "{{ busqueda }}"{% else %}No hay clientes registrados aún{% endif %}</p>
+    <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-gold" style="margin-top:16px">Registrar primer cliente</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}La Sastrería{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1a1a2e;
+  --gold: #c8a96e;
+  --gold-light: #e8c98e;
+  --cream: #faf8f5;
+  --text: #2d2d2d;
+  --text-muted: #888;
+  --border: #e0d8cc;
+  --success: #2d8a5e;
+  --warning: #c77d2a;
+  --danger: #b03a2e;
+  --sidebar-w: 260px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Lato', sans-serif; background: var(--cream); color: var(--text); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w);
+  background: var(--navy); z-index: 100;
+  display: flex; flex-direction: column;
+  box-shadow: 4px 0 20px rgba(0,0,0,.25);
+}
+.sidebar-logo {
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid rgba(200,169,110,.2);
+}
+.sidebar-logo h1 {
+  font-family: 'Playfair Display', serif;
+  color: var(--gold);
+  font-size: 22px; letter-spacing: 1px;
+}
+.sidebar-logo p { color: rgba(255,255,255,.45); font-size: 11px; margin-top: 3px; letter-spacing: 2px; text-transform: uppercase; }
+.sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
+.nav-section { padding: 12px 24px 6px; color: rgba(255,255,255,.3); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.nav-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px; color: rgba(255,255,255,.7);
+  text-decoration: none; font-size: 14px; font-weight: 400;
+  transition: all .2s; position: relative;
+}
+.nav-link:hover { color: #fff; background: rgba(200,169,110,.1); }
+.nav-link.active { color: var(--gold); background: rgba(200,169,110,.12); }
+.nav-link.active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--gold); border-radius: 0 2px 2px 0;
+}
+.nav-icon { width: 18px; text-align: center; font-size: 16px; }
+.sidebar-footer {
+  padding: 20px 24px; border-top: 1px solid rgba(200,169,110,.15);
+}
+.user-info { display: flex; align-items: center; gap: 12px; }
+.user-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--gold); display: flex; align-items: center; justify-content: center;
+  color: var(--navy); font-weight: 700; font-size: 14px;
+}
+.user-name { font-size: 13px; color: #fff; font-weight: 600; }
+.user-role { font-size: 11px; color: rgba(255,255,255,.4); }
+.btn-logout {
+  margin-top: 12px; width: 100%; padding: 8px;
+  background: rgba(255,255,255,.07); color: rgba(255,255,255,.6);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 6px;
+  cursor: pointer; font-size: 13px; transition: all .2s; text-decoration: none;
+  display: block; text-align: center;
+}
+.btn-logout:hover { background: rgba(176,58,46,.3); color: #fff; border-color: rgba(176,58,46,.5); }
+
+/* ── MAIN CONTENT ── */
+.main { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+.topbar {
+  background: #fff; padding: 16px 32px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 50;
+}
+.topbar-title { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--navy); }
+.topbar-actions { display: flex; gap: 10px; }
+.content { padding: 28px 32px; flex: 1; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 18px; border-radius: 7px; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none; text-decoration: none; transition: all .2s;
+}
+.btn-primary { background: var(--navy); color: #fff; }
+.btn-primary:hover { background: #25254a; }
+.btn-gold { background: var(--gold); color: var(--navy); }
+.btn-gold:hover { background: var(--gold-light); }
+.btn-outline { background: transparent; color: var(--navy); border: 1.5px solid var(--navy); }
+.btn-outline:hover { background: var(--navy); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-ghost { background: transparent; color: var(--text-muted); padding: 6px 10px; }
+.btn-ghost:hover { background: #f0ebe4; color: var(--text); }
+
+/* ── CARDS ── */
+.card {
+  background: #fff; border-radius: 12px; padding: 24px;
+  border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.card-title { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--navy); }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 28px; }
+.stat-card {
+  background: #fff; border-radius: 12px; padding: 22px;
+  border: 1px solid var(--border); position: relative; overflow: hidden;
+}
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gold); }
+.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.stat-value { font-family: 'Playfair Display', serif; font-size: 32px; color: var(--navy); }
+.stat-icon { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 36px; opacity: .08; }
+
+/* ── TABLES ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th {
+  background: #f7f4ef; color: var(--text-muted); font-size: 11px;
+  text-transform: uppercase; letter-spacing: 1px; padding: 10px 14px;
+  text-align: left; border-bottom: 1px solid var(--border); font-weight: 700;
+}
+tbody tr { border-bottom: 1px solid #f0ebe4; transition: background .15s; }
+tbody tr:hover { background: #faf8f5; }
+tbody td { padding: 12px 14px; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+}
+.badge-pending { background: #fef3c7; color: #92400e; }
+.badge-delivered { background: #d1fae5; color: #065f46; }
+.badge-cancelled { background: #fee2e2; color: #991b1b; }
+.badge-processing { background: #dbeafe; color: #1e40af; }
+
+/* ── FORMS ── */
+.form-group { margin-bottom: 18px; }
+.form-label { display: block; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.form-label .req { color: var(--danger); }
+.form-control {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 14px; font-family: 'Lato', sans-serif;
+  transition: border-color .2s; background: #fff; color: var(--text);
+}
+.form-control:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,169,110,.15); }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.form-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── ALERTS ── */
+.alert { padding: 12px 18px; border-radius: 8px; margin-bottom: 18px; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+.alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+/* ── FLASH MESSAGES ── */
+.flash-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.flash { padding: 12px 20px; border-radius: 8px; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.15); animation: slideIn .3s ease; min-width: 280px; }
+.flash-success { background: #065f46; color: #fff; }
+.flash-error { background: #991b1b; color: #fff; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ── MISC ── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: .3; }
+.tag { display: inline-block; padding: 2px 8px; background: #f0ebe4; border-radius: 4px; font-size: 12px; color: var(--text-muted); }
+a { color: var(--navy); }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="flash-container" id="flashContainer">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="flash flash-{{ category }}" onclick="this.remove()">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+</div>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>✂ La Sastrería</h1>
+    <p>Sistema de Gestión</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Principal</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a href="{{ url_for('nueva_orden') }}" class="nav-link {% if request.endpoint=='nueva_orden' %}active{% endif %}">
+      <span class="nav-icon">➕</span> Nueva Orden
+    </a>
+    <div class="nav-section">Gestión</div>
+    <a href="{{ url_for('ordenes') }}" class="nav-link {% if request.endpoint in ['ordenes','detalle_orden','editar_orden'] %}active{% endif %}">
+      <span class="nav-icon">📋</span> Órdenes de Trabajo
+    </a>
+    <a href="{{ url_for('clientes') }}" class="nav-link {% if request.endpoint in ['clientes','detalle_cliente','editar_cliente','nuevo_cliente'] %}active{% endif %}">
+      <span class="nav-icon">👥</span> Clientes
+    </a>
+    <a href="{{ url_for('calendario') }}" class="nav-link {% if request.endpoint=='calendario' %}active{% endif %}">
+      <span class="nav-icon">📅</span> Calendario
+    </a>
+    <div class="nav-section">Configuración</div>
+    <a href="{{ url_for('catalogo') }}" class="nav-link {% if request.endpoint=='catalogo' %}active{% endif %}">
+      <span class="nav-icon">🧵</span> Catálogo de Servicios
+    </a>
+    <a href="{{ url_for('exportar_clientes') }}" class="nav-link">
+      <span class="nav-icon">📥</span> Exportar Clientes Excel
+    </a>
+    {% if session.rol == 'owner' %}
+    <a href="{{ url_for('configuracion') }}" class="nav-link {% if request.endpoint=='configuracion' %}active{% endif %}">
+      <span class="nav-icon">⚙️</span> Configuración
+    </a>
+    {% endif %}
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">{{ session.nombre[0] if session.nombre else 'U' }}</div>
+      <div>
+        <div class="user-name">{{ session.nombre }}</div>
+        <div class="user-role">{{ session.display }}</div>
+      </div>
+    </div>
+    <a href="{{ url_for('logout') }}" class="btn-logout">🚪 Cerrar Sesión</a>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title">{% block topbar_title %}{% endblock %}</div>
+    <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+  </div>
+  <div class="content">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<script>
+// Auto-dismiss flash messages after 4s
+setTimeout(() => {
+  document.querySelectorAll('.flash').forEach(f => f.remove());
+}, 4000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

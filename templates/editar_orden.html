@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Editar {{ orden.numero_orden }} — La Sastrería{% endblock %}
+{% block topbar_title %}Editar Orden {{ orden.numero_orden }}{% endblock %}
+{% block content %}
+<div style="max-width:900px">
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title" style="margin-bottom:16px">📋 Datos de la Orden — {{ orden.cliente_nombre }}</div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label class="form-label">Fecha de Entrega</label>
+      <input type="date" class="form-control" id="fechaEntrega" value="{{ orden.fecha_entrega }}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Notas</label>
+    <textarea class="form-control" id="notas" rows="2">{{ orden.notas_adicionales or '' }}</textarea>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title" style="margin-bottom:16px">🧵 Prendas</div>
+  {% for p in prendas %}
+  <div class="prenda-row" id="ep_{{ p.id }}" style="background:#faf8f5;border:1px solid #e0d8cc;border-radius:10px;padding:16px;margin-bottom:10px">
+    <div class="form-grid" style="grid-template-columns:1fr 1fr 80px 120px">
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <input type="text" class="form-control ep-tipo" value="{{ p.tipo_prenda }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input type="text" class="form-control ep-desc" value="{{ p.descripcion_servicio }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cant.</label>
+        <input type="number" class="form-control ep-cant" value="{{ p.cantidad }}" min="1" oninput="calcSub({{ p.id }})">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio (Q)</label>
+        <input type="number" class="form-control ep-precio" value="{{ p.precio_unitario }}" step="0.01" oninput="calcSub({{ p.id }})">
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:14px;color:var(--navy)">Subtotal: <strong id="sub_{{ p.id }}">Q {{ "%.2f"|format(p.subtotal) }}</strong></span>
+      <button onclick="eliminarExistente({{ p.id }})" class="btn btn-danger btn-sm">🗑 Eliminar</button>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div id="nuevasPrendas"></div>
+  <button onclick="agregarNueva()" class="btn btn-outline" style="width:100%;margin-top:8px">➕ Agregar Prenda</button>
+</div>
+
+<div style="display:flex;gap:10px;margin-top:20px">
+  <button onclick="guardarCambios()" class="btn btn-primary">💾 Guardar Cambios</button>
+  <a href="{{ url_for('detalle_orden', id=orden.id) }}" class="btn btn-ghost">Cancelar</a>
+</div>
+</div>
+
+<script>
+const CATALOGO = {{ catalogo | tojson }};
+let npCount = 0;
+const eliminados = [];
+
+function calcSub(id) {
+  const row = document.getElementById(`ep_${id}`);
+  const cant = parseFloat(row.querySelector('.ep-cant').value) || 0;
+  const precio = parseFloat(row.querySelector('.ep-precio').value) || 0;
+  document.getElementById(`sub_${id}`).textContent = `Q ${(cant*precio).toFixed(2)}`;
+}
+
+function eliminarExistente(id) {
+  if (!confirm('¿Eliminar esta prenda?')) return;
+  document.getElementById(`ep_${id}`).remove();
+  eliminados.push(id);
+}
+
+function agregarNueva() {
+  npCount++;
+  const id = 'np_' + npCount;
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'background:#faf8f5;border:1px solid var(--gold);border-radius:10px;padding:16px;margin-bottom:10px';
+  div.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 80px 120px;gap:12px">
+      <div><label class="form-label">Tipo</label><input type="text" class="form-control np-tipo" placeholder="Tipo prenda"></div>
+      <div><label class="form-label">Descripción</label><input type="text" class="form-control np-desc" placeholder="Descripción servicio"></div>
+      <div><label class="form-label">Cant.</label><input type="number" class="form-control np-cant" value="1" min="1"></div>
+      <div><label class="form-label">Precio (Q)</label><input type="number" class="form-control np-precio" value="0" step="0.01"></div>
+    </div>
+    <button onclick="document.getElementById('${id}').remove()" class="btn btn-danger btn-sm" style="margin-top:8px">🗑 Quitar</button>
+  `;
+  document.getElementById('nuevasPrendas').appendChild(div);
+}
+
+async function guardarCambios() {
+  const prendasAct = [];
+  document.querySelectorAll('[id^="ep_"]').forEach(row => {
+    const id = parseInt(row.id.split('_')[1]);
+    const cant = parseFloat(row.querySelector('.ep-cant').value) || 1;
+    const precio = parseFloat(row.querySelector('.ep-precio').value) || 0;
+    prendasAct.push({
+      id, tipo: row.querySelector('.ep-tipo').value,
+      descripcion: row.querySelector('.ep-desc').value,
+      cantidad: cant, precio_unitario: precio, subtotal: cant*precio
+    });
+  });
+
+  const prendasNuevas = [];
+  let total = prendasAct.reduce((s, p) => s + p.subtotal, 0);
+  document.querySelectorAll('[id^="np_"]').forEach(row => {
+    const cant = parseFloat(row.querySelector('.np-cant').value) || 1;
+    const precio = parseFloat(row.querySelector('.np-precio').value) || 0;
+    const sub = cant * precio;
+    total += sub;
+    prendasNuevas.push({
+      tipo: row.querySelector('.np-tipo').value,
+      descripcion: row.querySelector('.np-desc').value,
+      cantidad: cant, precio_unitario: precio, precio_tipo: 'fijo', subtotal: sub
+    });
+  });
+
+  const resp = await fetch(`/ordenes/{{ orden.id }}/editar`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      fecha_entrega: document.getElementById('fechaEntrega').value,
+      notas: document.getElementById('notas').value,
+      total, prendas_actualizar: prendasAct,
+      prendas_nuevas: prendasNuevas, prendas_eliminar: eliminados
+    })
+  });
+  if ((await resp.json()).success) window.location.href = `/ordenes/{{ orden.id }}`;
+}
+</script>
+{% endblock %}

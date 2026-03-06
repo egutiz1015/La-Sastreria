@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+data/sastreria.db
+exports/
+*.bat
+iniciar_mac.sh
+{backend,frontend}/
+{templates,static/
+{templates,static/css,static/
+{templates,static/css,static/js,data,exports}/
+backend/
+frontend/
+.env

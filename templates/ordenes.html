@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Órdenes — La Sastrería{% endblock %}
+{% block topbar_title %}Órdenes de Trabajo{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('nueva_orden') }}" class="btn btn-gold">➕ Nueva Orden</a>
+{% endblock %}
+{% block content %}
+<!-- Filtros -->
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+  <div>
+    {% for estado, label, color in [('todos','Todas','btn-ghost'),('pendiente','Pendientes','btn-ghost'),('en_proceso','En Proceso','btn-ghost'),('listo','Listo','btn-ghost'),('entregado','Entregadas','btn-ghost')] %}
+    <a href="{{ url_for('ordenes', estado=estado, q=busqueda) }}"
+       class="btn btn-sm {% if estado_filtro==estado %}btn-primary{% else %}btn-ghost{% endif %}"
+       style="margin-right:4px">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <form method="get" style="display:flex;gap:6px;margin-left:auto">
+    <input type="hidden" name="estado" value="{{ estado_filtro }}">
+    <input type="text" name="q" value="{{ busqueda }}" class="form-control" placeholder="Buscar cliente u orden..." style="width:240px">
+    <button type="submit" class="btn btn-primary btn-sm">🔍</button>
+    {% if busqueda %}<a href="{{ url_for('ordenes', estado=estado_filtro) }}" class="btn btn-ghost btn-sm">✕</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+  {% if ordenes %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>N° Orden</th>
+          <th>Cliente</th>
+          <th>Teléfono</th>
+          <th>Fecha Orden</th>
+          <th>Fecha Entrega</th>
+          <th>Prendas</th>
+          <th>Total</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in ordenes %}
+        <tr>
+          <td><strong style="color:var(--navy)">{{ o.numero_orden }}</strong></td>
+          <td>{{ o.cliente_nombre }}</td>
+          <td style="font-size:13px;color:var(--text-muted)">{{ o.cliente_tel or '—' }}</td>
+          <td>{{ o.fecha_orden }}</td>
+          <td style="font-weight:600;color:var(--warning)">{{ o.fecha_entrega }}</td>
+          <td style="text-align:center">{{ o.total_prendas }}</td>
+          <td>Q {{ "%.2f"|format(o.total) }}</td>
+          <td><span class="badge badge-{% if o.estado=='pendiente' %}pending{% elif o.estado=='entregado' %}delivered{% elif o.estado=='listo' %}processing{% else %}cancelled{% endif %}">{{ o.estado }}</span></td>
+          <td>
+            <a href="{{ url_for('detalle_orden', id=o.id) }}" class="btn btn-ghost btn-sm">Ver →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <p>No hay órdenes{% if estado_filtro != 'todos' %} con estado "{{ estado_filtro }}"{% endif %}</p>
+    <a href="{{ url_for('nueva_orden') }}" class="btn btn-gold" style="margin-top:16px">Crear primera orden</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

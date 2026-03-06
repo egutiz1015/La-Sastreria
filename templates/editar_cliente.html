@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Editar {{ cliente.nombre }} — La Sastrería{% endblock %}
+{% block topbar_title %}Editar Cliente{% endblock %}
+{% block content %}
+<div style="max-width:700px">
+<form method="POST">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:20px">✏️ Editar Datos del Cliente</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Nombre <span class="req">*</span></label>
+        <input type="text" name="nombre" class="form-control" value="{{ cliente.nombre }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="text" name="telefono" class="form-control" value="{{ cliente.telefono or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Correo</label>
+        <input type="email" name="correo" class="form-control" value="{{ cliente.correo or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NIT</label>
+        <input type="text" name="nit" class="form-control" value="{{ cliente.nit or '' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dirección</label>
+      <input type="text" name="direccion" class="form-control" value="{{ cliente.direccion or '' }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notas</label>
+      <textarea name="notas" class="form-control" rows="3">{{ cliente.notas or '' }}</textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
+      <a href="{{ url_for('detalle_cliente', id=cliente.id) }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </div>
+</form>
+</div>
+{% endblock %}

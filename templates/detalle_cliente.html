@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ cliente.nombre }} — La Sastrería{% endblock %}
+{% block topbar_title %}{{ cliente.nombre }}{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-outline btn-sm">✏️ Editar</a>
+<a href="{{ url_for('nueva_orden') }}" class="btn btn-gold">➕ Nueva Orden</a>
+{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:280px 1fr;gap:24px">
+  <div>
+    <div class="card">
+      <div style="text-align:center;padding:16px 0 20px">
+        <div style="width:70px;height:70px;border-radius:50%;background:var(--navy);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--gold);font-family:'Playfair Display',serif">{{ cliente.nombre[0] }}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:20px;color:var(--navy)">{{ cliente.nombre }}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Cliente desde {{ cliente.fecha_registro }}</div>
+      </div>
+      <hr class="divider">
+      {% if cliente.telefono %}<div style="padding:6px 0;font-size:14px">📞 {{ cliente.telefono }}</div>{% endif %}
+      {% if cliente.correo %}<div style="padding:6px 0;font-size:14px">📧 {{ cliente.correo }}</div>{% endif %}
+      {% if cliente.nit %}<div style="padding:6px 0;font-size:14px">🪪 NIT: {{ cliente.nit }}</div>{% endif %}
+      {% if cliente.direccion %}<div style="padding:6px 0;font-size:14px">📍 {{ cliente.direccion }}</div>{% endif %}
+      {% if cliente.notas %}
+      <hr class="divider">
+      <div style="font-size:13px;color:var(--text-muted)">{{ cliente.notas }}</div>
+      {% endif %}
+      <hr class="divider">
+      <div style="display:flex;justify-content:space-between;font-size:13px">
+        <span style="color:var(--text-muted)">Total órdenes</span>
+        <strong>{{ ordenes|length }}</strong>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Historial de Órdenes</div>
+      </div>
+      {% if ordenes %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Orden</th><th>Fecha</th><th>Entrega</th><th>Prendas</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            {% for o in ordenes %}
+            <tr>
+              <td><strong style="color:var(--navy)">{{ o.numero_orden }}</strong></td>
+              <td>{{ o.fecha_orden }}</td>
+              <td>{{ o.fecha_entrega }}</td>
+              <td style="text-align:center">{{ o.total_prendas }}</td>
+              <td>Q {{ "%.2f"|format(o.total) }}</td>
+              <td><span class="badge badge-{% if o.estado=='pendiente' %}pending{% elif o.estado=='entregado' %}delivered{% else %}cancelled{% endif %}">{{ o.estado }}</span></td>
+              <td><a href="{{ url_for('detalle_orden', id=o.id) }}" class="btn btn-ghost btn-sm">Ver</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="empty-icon">📋</div><p>Sin órdenes aún</p></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

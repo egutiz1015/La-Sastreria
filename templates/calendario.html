@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Calendario — La Sastrería{% endblock %}
+{% block topbar_title %}Calendario de Entregas{% endblock %}
+{% block extra_head %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.10/index.global.min.css" rel="stylesheet">
+<style>
+.fc { font-family: 'Lato', sans-serif !important; }
+.fc-toolbar-title { font-family: 'Playfair Display', serif !important; color: var(--navy) !important; }
+.fc-button { background: var(--navy) !important; border-color: var(--navy) !important; font-size: 13px !important; }
+.fc-button:hover { background: #25254a !important; }
+.fc-button-active { background: var(--gold) !important; border-color: var(--gold) !important; color: var(--navy) !important; }
+.fc-daygrid-day-number { color: var(--navy) !important; font-weight: 600 !important; }
+.fc-today-button { background: var(--gold) !important; border-color: var(--gold) !important; color: var(--navy) !important; font-weight: 700 !important; }
+#legendBox { display:flex;gap:16px;margin-bottom:12px;font-size:13px;align-items:center }
+.legend-dot { width:12px;height:12px;border-radius:50%;display:inline-block }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="legendBox">
+  <span><span class="legend-dot" style="background:#f59e0b"></span> Pendiente</span>
+  <span><span class="legend-dot" style="background:#10b981"></span> Entregado</span>
+  <span><span class="legend-dot" style="background:#6b7280"></span> Otro</span>
+</div>
+<div class="card">
+  <div id="calendar"></div>
+</div>
+
+<!-- Modal evento -->
+<div id="eventoModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:28px;max-width:420px;width:90%;position:relative">
+    <button onclick="document.getElementById('eventoModal').style.display='none'" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#999">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.10/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const resp = await fetch('/api/calendario/eventos');
+  const eventos = await resp.json();
+
+  const cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    initialView: 'dayGridMonth',
+    locale: 'es',
+    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
+    events: eventos,
+    height: 'auto',
+    eventClick: function(info) {
+      const e = info.event;
+      const props = e.extendedProps;
+      document.getElementById('modalContent').innerHTML = `
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Orden de Trabajo</div>
+        <div style="font-family:'Playfair Display',serif;font-size:20px;color:#1a1a2e;margin-bottom:4px">${e.title}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="background:${e.backgroundColor};color:#fff;padding:3px 10px;border-radius:20px;font-size:12px">${props.estado}</span>
+        </div>
+        <table style="width:100%;font-size:14px">
+          <tr><td style="color:#888;padding:4px 0">Fecha entrega:</td><td style="font-weight:600">${e.startStr}</td></tr>
+          <tr><td style="color:#888;padding:4px 0">Total:</td><td style="font-weight:700;font-size:16px;color:#1a1a2e">Q ${props.total.toFixed(2)}</td></tr>
+        </table>
+        <a href="/ordenes/${e.id}" style="display:block;margin-top:16px;background:#1a1a2e;color:#fff;text-decoration:none;padding:10px;border-radius:8px;text-align:center;font-weight:600">Ver Detalle →</a>
+      `;
+      document.getElementById('eventoModal').style.display = 'flex';
+    }
+  });
+  cal.render();
+});
+</script>
+{% endblock %}

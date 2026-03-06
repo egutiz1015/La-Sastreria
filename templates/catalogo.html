@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Catálogo — La Sastrería{% endblock %}
+{% block topbar_title %}Catálogo de Servicios{% endblock %}
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 360px;gap:24px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🧵 Servicios y Prendas</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Servicio</th><th>Descripción</th><th>Precio Base</th><th>Tipo</th><th>Activo</th><th></th></tr></thead>
+        <tbody>
+          {% for s in servicios %}
+          <tr>
+            <td><strong>{{ s.nombre }}</strong></td>
+            <td style="font-size:13px;color:var(--text-muted)">{{ s.descripcion or '—' }}</td>
+            <td>{% if s.precio_tipo == 'fijo' %}Q {{ "%.2f"|format(s.precio_base) }}{% else %}<span class="tag">Variable</span>{% endif %}</td>
+            <td><span class="badge {% if s.precio_tipo=='fijo' %}badge-delivered{% else %}badge-pending{% endif %}">{{ s.precio_tipo }}</span></td>
+            <td>{% if s.activo %}✅{% else %}❌{% endif %}</td>
+            <td><button onclick="editarServicio({{ s.id }}, {{ s | tojson | e }})" class="btn btn-ghost btn-sm">✏️</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px">➕ Nuevo Servicio</div>
+      <div class="form-group">
+        <label class="form-label">Nombre del Servicio <span class="req">*</span></label>
+        <input type="text" class="form-control" id="newNombre" placeholder="Ej: Pantalón - Arreglo entrada">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <input type="text" class="form-control" id="newDesc" placeholder="Descripción del servicio">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de Precio</label>
+        <select class="form-control" id="newTipo" onchange="togglePrecio()">
+          <option value="fijo">🔒 Precio Fijo</option>
+          <option value="variable">✏️ Precio Variable</option>
+        </select>
+      </div>
+      <div class="form-group" id="precioGroup">
+        <label class="form-label">Precio Base (Q)</label>
+        <input type="number" class="form-control" id="newPrecio" value="0" min="0" step="0.01">
+      </div>
+      <button onclick="guardarServicio()" class="btn btn-primary" style="width:100%">💾 Guardar Servicio</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function togglePrecio() {
+  const tipo = document.getElementById('newTipo').value;
+  document.getElementById('precioGroup').style.display = tipo === 'fijo' ? 'block' : 'none';
+}
+
+async function guardarServicio() {
+  const nombre = document.getElementById('newNombre').value.trim();
+  if (!nombre) { alert('Ingrese el nombre del servicio'); return; }
+  await fetch('/catalogo/nuevo', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      nombre, descripcion: document.getElementById('newDesc').value,
+      precio_base: document.getElementById('newPrecio').value,
+      precio_tipo: document.getElementById('newTipo').value
+    })
+  });
+  location.reload();
+}
+
+async function editarServicio(id, s) {
+  const nombre = prompt('Nombre:', s.nombre);
+  if (!nombre) return;
+  const precio = prompt('Precio base (0 si es variable):', s.precio_base);
+  await fetch(`/catalogo/${id}/editar`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({nombre, descripcion: s.descripcion, precio_base: precio, precio_tipo: s.precio_tipo, activo: s.activo})
+  });
+  location.reload();
+}
+</script>
+{% endblock %}

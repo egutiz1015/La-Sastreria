@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Sastrería — Iniciar Sesión</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Lato', sans-serif;
+  min-height: 100vh;
+  background: #1a1a2e;
+  display: flex; align-items: center; justify-content: center;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(200,169,110,.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(200,169,110,.06) 0%, transparent 50%);
+}
+.login-container {
+  width: 100%; max-width: 420px; padding: 20px;
+}
+.login-card {
+  background: #fff; border-radius: 16px;
+  padding: 44px 40px; box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  position: relative; overflow: hidden;
+}
+.login-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, #c8a96e, #e8c98e, #c8a96e);
+}
+.logo { text-align: center; margin-bottom: 32px; }
+.logo h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; color: #1a1a2e; letter-spacing: 1px;
+}
+.logo p { color: #888; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; margin-top: 4px; }
+.scissors {
+  font-size: 32px; margin-bottom: 12px; display: block;
+  animation: snip .8s ease-in-out infinite alternate;
+}
+@keyframes snip { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+.form-group { margin-bottom: 18px; }
+label {
+  display: block; font-size: 12px; font-weight: 700;
+  color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .8px;
+}
+input {
+  width: 100%; padding: 12px 16px; border: 1.5px solid #e0d8cc;
+  border-radius: 8px; font-size: 15px; font-family: 'Lato', sans-serif;
+  transition: border-color .2s; color: #2d2d2d;
+}
+input:focus { outline: none; border-color: #c8a96e; box-shadow: 0 0 0 3px rgba(200,169,110,.15); }
+.btn-login {
+  width: 100%; padding: 13px; background: #1a1a2e; color: #fff;
+  border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: all .2s; margin-top: 8px; letter-spacing: .5px;
+}
+.btn-login:hover { background: #25254a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,26,46,.3); }
+.btn-login:active { transform: translateY(0); }
+.error-msg {
+  background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
+  padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.login-info {
+  background: #f7f4ef; border-radius: 8px; padding: 14px;
+  margin-top: 20px; font-size: 12px; color: #888;
+}
+.login-info strong { display: block; color: #555; margin-bottom: 6px; }
+.cred-row { display: flex; justify-content: space-between; padding: 3px 0; }
+.footer-text { text-align: center; margin-top: 24px; font-size: 11px; color: #aaa; }
+</style>
+</head>
+<body>
+<div class="login-container">
+  <div class="login-card">
+    <div class="logo">
+      <span class="scissors">✂</span>
+      <h1>La Sastrería</h1>
+      <p>Sistema de Gestión</p>
+    </div>
+
+    {% if error %}
+    <div class="error-msg">⚠️ {{ error }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" name="usuario" placeholder="erick o keila" autocomplete="username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" name="password" placeholder="••••••••••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-login">Ingresar al Sistema</button>
+    </form>
+
+    <div class="login-info">
+      <strong>👤 Accesos del sistema:</strong>
+      <div class="cred-row"><span>Dueño:</span> <strong>erick</strong></div>
+      <div class="cred-row"><span>Administradora:</span> <strong>keila</strong></div>
+      <div style="margin-top:6px;font-size:11px;color:#bbb;">Consultar contraseñas con el administrador del sistema</div>
+    </div>
+  </div>
+  <div class="footer-text">Erick Gutierrez — Fundador · Keila Gutierrez — Administradora</div>
+</div>
+</body>
+</html>

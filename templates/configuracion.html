@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Configuración — La Sastrería{% endblock %}
+{% block topbar_title %}Configuración del Sistema{% endblock %}
+{% block content %}
+<div style="max-width:680px">
+{% if get_flashed_messages() %}{% endif %}
+<form method="POST">
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:16px">🏢 Datos de la Empresa</div>
+    <div class="form-group">
+      <label class="form-label">Teléfono de la Sastrería</label>
+      <input type="text" name="empresa_telefono" class="form-control" value="{{ config.empresa_telefono or '' }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Correo de la Empresa</label>
+      <input type="email" name="empresa_correo" class="form-control" value="{{ config.empresa_correo or '' }}">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:8px">📧 Configuración de Correo (SMTP)</div>
+    <div class="alert alert-warning">
+      Para Gmail: usa tu correo y una <strong>contraseña de aplicación</strong> (no tu contraseña normal). Ve a Google → Cuenta → Seguridad → Contraseñas de aplicaciones.
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Servidor SMTP</label>
+        <input type="text" name="smtp_servidor" class="form-control" value="{{ config.smtp_servidor or 'smtp.gmail.com' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Puerto</label>
+        <input type="number" name="smtp_puerto" class="form-control" value="{{ config.smtp_puerto or '587' }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Usuario (correo remitente)</label>
+      <input type="email" name="smtp_usuario" class="form-control" value="{{ config.smtp_usuario or '' }}" placeholder="correo@gmail.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña de Aplicación</label>
+      <input type="password" name="smtp_password" class="form-control" value="{{ config.smtp_password or '' }}" placeholder="Contraseña de aplicación Gmail">
+      <div class="form-hint">Esta contraseña se guarda de forma local en su computadora</div>
+    </div>
+    <button type="submit" class="btn btn-primary">💾 Guardar Configuración</button>
+  </div>
+</form>
+
+<div class="card" style="margin-top:20px">
+  <div class="card-title" style="margin-bottom:12px">👤 Contraseñas del Sistema</div>
+  <div class="alert alert-warning">Las contraseñas están codificadas en el archivo <code>app.py</code>. Para cambiarlas, edite el archivo y reinicie el programa.</div>
+  <table style="font-size:14px;width:100%">
+    <tr><td style="padding:6px 0;color:var(--text-muted)">Dueño (erick):</td><td><code>Sastreria2024!Erick</code></td></tr>
+    <tr><td style="padding:6px 0;color:var(--text-muted)">Administradora (keila):</td><td><code>Sastreria2024!Keila</code></td></tr>
+  </table>
+</div>
+</div>
+{% endblock %}
