@@ -29,13 +29,13 @@ EXPORTS_PATH = os.path.join(os.path.dirname(__file__), 'exports')
 # ─────────────────────────────────────────────
 USERS = {
     'erick': {
-        'password': hashlib.sha256('Sastreria2024!Erick'.encode()).hexdigest(),
+        'password': 'c98583b2cb9f8dcd129c0cda6913a8ed1db835a877842ee208569b50b97f46ee',
         'name': 'Erick Gutierrez',
         'role': 'owner',
         'display': 'Dueño & Fundador'
     },
     'keila': {
-        'password': hashlib.sha256('Sastreria2024!Keila'.encode()).hexdigest(),
+        'password': 'd6730f9706f88db370fef218422d05d16e3f94b9bbcf5dfa239cf21ff4ce8a11',
         'name': 'Keila Gutierrez',
         'role': 'admin',
         'display': 'Administradora'
@@ -1010,8 +1010,8 @@ if __name__ == "__main__":
     print("  LA SASTRERÍA - Sistema de Gestión")
     print("=" * 50)
     print("  Usuarios:")
-    print("  • erick  / Sastreria2024!Erick  (Dueño)")
-    print("  • keila  / Sastreria2024!Keila  (Admin)")
+    print("  • erick  / TEMP1  (Dueño)")
+    print("  • keila  / TEMP2  (Admin)")
     print("=" * 50)
     print(f"  Acceder en: http://localhost:{port}")
     print("=" * 50)
