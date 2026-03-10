@@ -18,8 +18,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.rmczinwjgxk
 EXPORTS_PATH = '/tmp/exports'
 
 USERS = {
-    'erick': {'password': '7e8e5eb4669d0e34d68c91e0c4c16367ccd00325e2b86af811622e9aecb826b7', 'name': 'Erick Gutierrez', 'role': 'owner', 'display': 'Dueño & Fundador'},
-    'keila': {'password': 'e6d1181d239e2b6e03d2011e3bd7b6845484b13b57db2a3451c559b10b3feed4', 'name': 'Keila Gutierrez', 'role': 'admin', 'display': 'Administradora'}
+    'erick': {'password': 'c98583b2cb9f8dcd129c0cda6913a8ed1db835a877842ee208569b50b97f46ee', 'name': 'Erick Gutierrez', 'role': 'owner', 'display': 'Dueño & Fundador'},
+    'keila': {'password': 'd6730f9706f88db370fef218422d05d16e3f94b9bbcf5dfa239cf21ff4ce8a11', 'name': 'Keila Gutierrez', 'role': 'admin', 'display': 'Administradora'}
 }
 
 def get_db():
