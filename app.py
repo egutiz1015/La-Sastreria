@@ -21,6 +21,8 @@ from email import encoders
 import functools
 
 app = Flask(__name__)
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres.rmczinwjgxkfgffdsaiy:Ca83fd59f1.@aws-0-us-west-2.pooler.supabase.com:5432/postgres")
+
 app.secret_key = os.environ.get('SECRET_KEY', 'sastreria_la_sastreria_erick_keila_2024_xK9mP2qL')
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:Ca83fd59f1.@db.rmczinwjgxkfgffdsaiy.supabase.co:5432/postgres')
