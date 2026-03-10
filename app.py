@@ -4,11 +4,13 @@ Fundador: Erick Gutierrez | Administradora: Keila Gutierrez
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file, flash
-import sqlite3
+from io import BytesIO
 import hashlib
 import os
 import json
 from datetime import datetime, date, timedelta
+import psycopg2
+import psycopg2.extras
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import smtplib
@@ -19,23 +21,23 @@ from email import encoders
 import functools
 
 app = Flask(__name__)
-app.secret_key = 'sastreria_erick_keila_2024_secret_key_secure'
+app.secret_key = os.environ.get('SECRET_KEY', 'sastreria_la_sastreria_erick_keila_2024_xK9mP2qL')
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'sastreria.db')
-EXPORTS_PATH = os.path.join(os.path.dirname(__file__), 'exports')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:Ca83fd59f1.@db.rmczinwjgxkfgffdsaiy.supabase.co:5432/postgres')
+EXPORTS_PATH = os.environ.get('EXPORTS_PATH', '/tmp/exports')
 
 # ─────────────────────────────────────────────
 # USUARIOS PREDEFINIDOS (dueño y secretaria)
 # ─────────────────────────────────────────────
 USERS = {
     'erick': {
-        'password': 'c98583b2cb9f8dcd129c0cda6913a8ed1db835a877842ee208569b50b97f46ee',
+        'password': '7e8e5eb4669d0e34d68c91e0c4c16367ccd00325e2b86af811622e9aecb826b7',
         'name': 'Erick Gutierrez',
         'role': 'owner',
         'display': 'Dueño & Fundador'
     },
     'keila': {
-        'password': 'd6730f9706f88db370fef218422d05d16e3f94b9bbcf5dfa239cf21ff4ce8a11',
+        'password': 'e6d1181d239e2b6e03d2011e3bd7b6845484b13b57db2a3451c559b10b3feed4',
         'name': 'Keila Gutierrez',
         'role': 'admin',
         'display': 'Administradora'
@@ -46,19 +48,23 @@ USERS = {
 # BASE DE DATOS
 # ─────────────────────────────────────────────
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor, connect_timeout=10)
+        conn.autocommit = False
+        return conn
+    except Exception as e:
+        print(f"❌ Error conectando a DB: {e}")
+        raise
 
 def init_db():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    os.makedirs(EXPORTS_PATH, exist_ok=True)
     conn = get_db()
     c = conn.cursor()
 
     # Tabla de clientes
     c.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             nombre TEXT NOT NULL,
             telefono TEXT,
             correo TEXT,
@@ -73,7 +79,7 @@ def init_db():
     # Tabla de órdenes de trabajo
     c.execute('''
         CREATE TABLE IF NOT EXISTS ordenes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             numero_orden TEXT UNIQUE NOT NULL,
             cliente_id INTEGER NOT NULL,
             fecha_orden TEXT NOT NULL,
@@ -91,7 +97,7 @@ def init_db():
     # Tabla de prendas/servicios por orden
     c.execute('''
         CREATE TABLE IF NOT EXISTS prendas_orden (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             orden_id INTEGER NOT NULL,
             tipo_prenda TEXT NOT NULL,
             descripcion_servicio TEXT NOT NULL,
@@ -108,7 +114,7 @@ def init_db():
     # Catálogo de prendas/servicios
     c.execute('''
         CREATE TABLE IF NOT EXISTS catalogo_servicios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             nombre TEXT NOT NULL,
             descripcion TEXT,
             precio_base REAL,
@@ -137,7 +143,7 @@ def init_db():
         ('moneda', 'Q'),
     ]
     for clave, valor in configs:
-        c.execute('INSERT OR IGNORE INTO configuracion VALUES (?, ?)', (clave, valor))
+        c.execute('INSERT INTO configuracion VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING', (clave, valor))
 
     # Servicios de catálogo por defecto
     servicios_default = [
@@ -153,7 +159,7 @@ def init_db():
         ('Botones - Costura', 'Costura de botones', 10.00, 'fijo'),
     ]
     for nombre, desc, precio, tipo in servicios_default:
-        c.execute('INSERT OR IGNORE INTO catalogo_servicios (nombre, descripcion, precio_base, precio_tipo) VALUES (?,?,?,?)',
+        c.execute('INSERT INTO catalogo_servicios (nombre, descripcion, precio_base, precio_tipo) SELECT %s,%s,%s,%s WHERE NOT EXISTS (SELECT 1 FROM catalogo_servicios WHERE nombre=%s)',
                   (nombre, desc, precio, tipo))
 
     conn.commit()
@@ -175,7 +181,7 @@ def generate_order_number():
     c = conn.cursor()
     today = date.today()
     prefix = f"ORD-{today.strftime('%Y%m')}-"
-    c.execute("SELECT numero_orden FROM ordenes WHERE numero_orden LIKE ? ORDER BY id DESC LIMIT 1", (prefix + '%',))
+    c.execute("SELECT numero_orden FROM ordenes WHERE numero_orden LIKE %s ORDER BY id DESC LIMIT 1", (prefix + '%',))
     last = c.fetchone()
     conn.close()
     if last:
@@ -253,7 +259,7 @@ def dashboard():
         SELECT o.*, cl.nombre as cliente_nombre
         FROM ordenes o
         JOIN clientes cl ON o.cliente_id = cl.id
-        WHERE o.fecha_entrega BETWEEN ? AND ? AND o.estado='pendiente'
+        WHERE o.fecha_entrega BETWEEN %s AND %s AND o.estado='pendiente'
         ORDER BY o.fecha_entrega ASC
         LIMIT 10
     """, (hoy, en_7_dias))
@@ -272,7 +278,7 @@ def dashboard():
     # Entregas hoy
     c.execute("""
         SELECT COUNT(*) as total FROM ordenes
-        WHERE fecha_entrega = ? AND estado='pendiente'
+        WHERE fecha_entrega = %s AND estado='pendiente'
     """, (hoy,))
     entregas_hoy = c.fetchone()['total']
 
@@ -303,7 +309,7 @@ def clientes():
             MAX(o.fecha_orden) as ultima_orden
             FROM clientes cl
             LEFT JOIN ordenes o ON cl.id = o.cliente_id
-            WHERE cl.activo=1 AND (cl.nombre LIKE ? OR cl.telefono LIKE ? OR cl.nit LIKE ? OR cl.correo LIKE ?)
+            WHERE cl.activo=1 AND (cl.nombre LIKE %s OR cl.telefono LIKE %s OR cl.nit LIKE %s OR cl.correo LIKE %s)
             GROUP BY cl.id ORDER BY cl.nombre
         """, (f'%{busqueda}%',)*4)
     else:
@@ -325,10 +331,8 @@ def nuevo_cliente():
     if request.method == 'POST':
         conn = get_db()
         c = conn.cursor()
-        c.execute("""
-            INSERT INTO clientes (nombre, telefono, correo, nit, direccion, notas, fecha_registro)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
+        c.execute("""INSERT INTO clientes (nombre, telefono, correo, nit, direccion, notas, fecha_registro)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""", (
             request.form['nombre'],
             request.form.get('telefono', ''),
             request.form.get('correo', ''),
@@ -337,7 +341,7 @@ def nuevo_cliente():
             request.form.get('notas', ''),
             date.today().isoformat()
         ))
-        cliente_id = c.lastrowid
+        cliente_id = c.fetchone()[0]
         conn.commit()
         conn.close()
         flash('Cliente registrado exitosamente', 'success')
@@ -349,7 +353,7 @@ def nuevo_cliente():
 def detalle_cliente(id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT * FROM clientes WHERE id=?", (id,))
+    c.execute("SELECT * FROM clientes WHERE id=%s", (id,))
     cliente = c.fetchone()
     if not cliente:
         return redirect(url_for('clientes'))
@@ -358,7 +362,7 @@ def detalle_cliente(id):
         SELECT o.*, COUNT(po.id) as total_prendas
         FROM ordenes o
         LEFT JOIN prendas_orden po ON o.id = po.orden_id
-        WHERE o.cliente_id=?
+        WHERE o.cliente_id=%s
         GROUP BY o.id
         ORDER BY o.fecha_orden DESC
     """, (id,))
@@ -371,13 +375,13 @@ def detalle_cliente(id):
 def editar_cliente(id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT * FROM clientes WHERE id=?", (id,))
+    c.execute("SELECT * FROM clientes WHERE id=%s", (id,))
     cliente = c.fetchone()
 
     if request.method == 'POST':
         c.execute("""
-            UPDATE clientes SET nombre=?, telefono=?, correo=?, nit=?, direccion=?, notas=?
-            WHERE id=?
+            UPDATE clientes SET nombre=%s, telefono=%s, correo=%s, nit=%s, direccion=%s, notas=%s
+            WHERE id=%s
         """, (
             request.form['nombre'],
             request.form.get('telefono', ''),
@@ -402,7 +406,7 @@ def api_buscar_clientes():
     q = request.args.get('q', '')
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT id, nombre, telefono, correo, nit FROM clientes WHERE activo=1 AND nombre LIKE ? LIMIT 10", (f'%{q}%',))
+    c.execute("SELECT id, nombre, telefono, correo, nit FROM clientes WHERE activo=1 AND nombre LIKE %s LIMIT 10", (f'%{q}%',))
     resultados = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify(resultados)
@@ -420,7 +424,8 @@ def ordenes():
 
     query = """
         SELECT o.*, cl.nombre as cliente_nombre, cl.telefono as cliente_tel,
-        COUNT(po.id) as total_prendas
+        COUNT(po.id) as total_prendas,
+        o.usuario_registro
         FROM ordenes o
         JOIN clientes cl ON o.cliente_id = cl.id
         LEFT JOIN prendas_orden po ON o.id = po.orden_id
@@ -429,11 +434,11 @@ def ordenes():
     params = []
 
     if estado != 'todos':
-        query += " AND o.estado=?"
+        query += " AND o.estado=%s"
         params.append(estado)
 
     if busqueda:
-        query += " AND (cl.nombre LIKE ? OR o.numero_orden LIKE ?)"
+        query += " AND (cl.nombre LIKE %s OR o.numero_orden LIKE %s)"
         params.extend([f'%{busqueda}%', f'%{busqueda}%'])
 
     query += " GROUP BY o.id ORDER BY o.fecha_orden DESC"
@@ -451,49 +456,43 @@ def nueva_orden():
         conn = get_db()
         c = conn.cursor()
 
-        numero_orden = generate_order_number()
+        numero_orden = data.get('numero_orden') or generate_order_number()
 
         # Crear o usar cliente existente
         cliente_id = data.get('cliente_id')
         if not cliente_id:
             # Cliente nuevo
-            c.execute("""
-                INSERT INTO clientes (nombre, telefono, correo, nit, fecha_registro)
-                VALUES (?, ?, ?, ?, ?)
-            """, (data['cliente_nombre'], data.get('cliente_tel', ''),
+            c.execute("""INSERT INTO clientes (nombre, telefono, correo, nit, fecha_registro)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id""", (data['cliente_nombre'], data.get('cliente_tel', ''),
                   data.get('cliente_correo', ''), data.get('cliente_nit', ''),
                   date.today().isoformat()))
-            cliente_id = c.lastrowid
+            cliente_id = c.fetchone()[0]
 
         # Crear orden
-        c.execute("""
-            INSERT INTO ordenes (numero_orden, cliente_id, fecha_orden, fecha_entrega,
+        c.execute("""INSERT INTO ordenes (numero_orden, cliente_id, fecha_orden, fecha_entrega,
             estado, total, notas_adicionales, usuario_registro, fecha_creacion)
-            VALUES (?, ?, ?, ?, 'pendiente', ?, ?, ?, ?)
-        """, (numero_orden, cliente_id, data['fecha_orden'], data['fecha_entrega'],
+            VALUES (%s, %s, %s, %s, 'pendiente', %s, %s, %s, %s) RETURNING id""", (numero_orden, cliente_id, data['fecha_orden'], data['fecha_entrega'],
               data['total'], data.get('notas', ''), session['usuario'],
               datetime.now().isoformat()))
 
-        orden_id = c.lastrowid
+        orden_id = c.fetchone()[0]
 
         # Insertar prendas
         for prenda in data['prendas']:
-            c.execute("""
-                INSERT INTO prendas_orden (orden_id, tipo_prenda, descripcion_servicio,
+            c.execute("""INSERT INTO prendas_orden (orden_id, tipo_prenda, descripcion_servicio,
                 cantidad, precio_tipo, precio_unitario, subtotal)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (orden_id, prenda['tipo'], prenda['descripcion'],
+                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""", (orden_id, prenda['tipo'], prenda['descripcion'],
                   prenda['cantidad'], prenda['precio_tipo'],
                   prenda['precio_unitario'], prenda['subtotal']))
 
         conn.commit()
 
         # Obtener datos para el correo y Excel
-        c.execute("SELECT * FROM ordenes WHERE id=?", (orden_id,))
+        c.execute("SELECT * FROM ordenes WHERE id=%s", (orden_id,))
         orden = dict(c.fetchone())
-        c.execute("SELECT * FROM clientes WHERE id=?", (cliente_id,))
+        c.execute("SELECT * FROM clientes WHERE id=%s", (cliente_id,))
         cliente = dict(c.fetchone())
-        c.execute("SELECT * FROM prendas_orden WHERE orden_id=?", (orden_id,))
+        c.execute("SELECT * FROM prendas_orden WHERE orden_id=%s", (orden_id,))
         prendas = [dict(p) for p in c.fetchall()]
 
         conn.close()
@@ -505,7 +504,7 @@ def nueva_orden():
         if cliente.get('correo'):
             enviar_correo_orden(orden, cliente, prendas)
             conn2 = get_db()
-            conn2.execute("UPDATE ordenes SET correo_enviado=1 WHERE id=?", (orden_id,))
+            conn2.execute("UPDATE ordenes SET correo_enviado=1 WHERE id=%s", (orden_id,))
             conn2.commit()
             conn2.close()
 
@@ -532,13 +531,13 @@ def detalle_orden(id):
         SELECT o.*, cl.nombre as cliente_nombre, cl.telefono as cliente_tel,
         cl.correo as cliente_correo, cl.nit as cliente_nit
         FROM ordenes o JOIN clientes cl ON o.cliente_id=cl.id
-        WHERE o.id=?
+        WHERE o.id=%s
     """, (id,))
     orden = c.fetchone()
     if not orden:
         return redirect(url_for('ordenes'))
 
-    c.execute("SELECT * FROM prendas_orden WHERE orden_id=? ORDER BY id", (id,))
+    c.execute("SELECT * FROM prendas_orden WHERE orden_id=%s ORDER BY id", (id,))
     prendas = c.fetchall()
     conn.close()
     return render_template('detalle_orden.html', orden=orden, prendas=prendas)
@@ -552,31 +551,29 @@ def editar_orden(id):
     if request.method == 'POST':
         data = request.get_json()
         c.execute("""
-            UPDATE ordenes SET fecha_entrega=?, notas_adicionales=?, total=?
-            WHERE id=?
+            UPDATE ordenes SET fecha_entrega=%s, notas_adicionales=%s, total=%s
+            WHERE id=%s
         """, (data['fecha_entrega'], data.get('notas', ''), data['total'], id))
 
         # Actualizar prendas existentes
         for prenda in data.get('prendas_actualizar', []):
             c.execute("""
-                UPDATE prendas_orden SET tipo_prenda=?, descripcion_servicio=?,
-                cantidad=?, precio_unitario=?, subtotal=?
-                WHERE id=?
+                UPDATE prendas_orden SET tipo_prenda=%s, descripcion_servicio=%s,
+                cantidad=%s, precio_unitario=%s, subtotal=%s
+                WHERE id=%s
             """, (prenda['tipo'], prenda['descripcion'], prenda['cantidad'],
                   prenda['precio_unitario'], prenda['subtotal'], prenda['id']))
 
         # Agregar prendas nuevas
         for prenda in data.get('prendas_nuevas', []):
-            c.execute("""
-                INSERT INTO prendas_orden (orden_id, tipo_prenda, descripcion_servicio,
+            c.execute("""INSERT INTO prendas_orden (orden_id, tipo_prenda, descripcion_servicio,
                 cantidad, precio_tipo, precio_unitario, subtotal)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (id, prenda['tipo'], prenda['descripcion'], prenda['cantidad'],
+                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""", (id, prenda['tipo'], prenda['descripcion'], prenda['cantidad'],
                   prenda['precio_tipo'], prenda['precio_unitario'], prenda['subtotal']))
 
         # Eliminar prendas
         for prenda_id in data.get('prendas_eliminar', []):
-            c.execute("DELETE FROM prendas_orden WHERE id=?", (prenda_id,))
+            c.execute("DELETE FROM prendas_orden WHERE id=%s", (prenda_id,))
 
         conn.commit()
         conn.close()
@@ -584,10 +581,10 @@ def editar_orden(id):
 
     c.execute("""
         SELECT o.*, cl.nombre as cliente_nombre FROM ordenes o
-        JOIN clientes cl ON o.cliente_id=cl.id WHERE o.id=?
+        JOIN clientes cl ON o.cliente_id=cl.id WHERE o.id=%s
     """, (id,))
     orden = c.fetchone()
-    c.execute("SELECT * FROM prendas_orden WHERE orden_id=?", (id,))
+    c.execute("SELECT * FROM prendas_orden WHERE orden_id=%s", (id,))
     prendas = c.fetchall()
     c.execute("SELECT * FROM catalogo_servicios WHERE activo=1")
     catalogo = [dict(s) for s in c.fetchall()]
@@ -600,7 +597,8 @@ def cambiar_estado_orden(id):
     data = request.get_json()
     nuevo_estado = data.get('estado')
     conn = get_db()
-    conn.execute("UPDATE ordenes SET estado=? WHERE id=?", (nuevo_estado, id))
+    c2 = conn.cursor()
+    c2.execute("UPDATE ordenes SET estado=%s WHERE id=%s", (nuevo_estado, id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -610,16 +608,16 @@ def cambiar_estado_orden(id):
 def entregar_prenda(id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("UPDATE prendas_orden SET entregada=1, fecha_entrega_real=? WHERE id=?",
+    c.execute("UPDATE prendas_orden SET entregada=1, fecha_entrega_real=%s WHERE id=%s",
               (date.today().isoformat(), id))
 
     # Verificar si todas las prendas de la orden están entregadas
-    c.execute("SELECT orden_id FROM prendas_orden WHERE id=?", (id,))
+    c.execute("SELECT orden_id FROM prendas_orden WHERE id=%s", (id,))
     orden_id = c.fetchone()['orden_id']
-    c.execute("SELECT COUNT(*) as total, SUM(entregada) as entregadas FROM prendas_orden WHERE orden_id=?", (orden_id,))
+    c.execute("SELECT COUNT(*) as total, SUM(entregada) as entregadas FROM prendas_orden WHERE orden_id=%s", (orden_id,))
     row = c.fetchone()
     if row['total'] == row['entregadas']:
-        c.execute("UPDATE ordenes SET estado='entregado' WHERE id=?", (orden_id,))
+        c.execute("UPDATE ordenes SET estado='entregado' WHERE id=%s", (orden_id,))
 
     conn.commit()
     conn.close()
@@ -678,9 +676,10 @@ def catalogo():
 def nuevo_servicio():
     data = request.get_json()
     conn = get_db()
-    conn.execute("""
+    c2 = conn.cursor()
+    c2.execute("""
         INSERT INTO catalogo_servicios (nombre, descripcion, precio_base, precio_tipo)
-        VALUES (?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s)
     """, (data['nombre'], data.get('descripcion', ''),
           float(data.get('precio_base', 0)), data.get('precio_tipo', 'fijo')))
     conn.commit()
@@ -692,9 +691,10 @@ def nuevo_servicio():
 def editar_servicio(id):
     data = request.get_json()
     conn = get_db()
-    conn.execute("""
-        UPDATE catalogo_servicios SET nombre=?, descripcion=?, precio_base=?, precio_tipo=?, activo=?
-        WHERE id=?
+    c2 = conn.cursor()
+    c2.execute("""
+        UPDATE catalogo_servicios SET nombre=%s, descripcion=%s, precio_base=%s, precio_tipo=%s, activo=%s
+        WHERE id=%s
     """, (data['nombre'], data.get('descripcion', ''), float(data.get('precio_base', 0)),
           data.get('precio_tipo', 'fijo'), data.get('activo', 1), id))
     conn.commit()
@@ -709,11 +709,11 @@ def editar_servicio(id):
 def descargar_orden(id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT o.*, cl.nombre as cliente_nombre, cl.telefono as cliente_tel, cl.correo as cliente_correo, cl.nit as cliente_nit FROM ordenes o JOIN clientes cl ON o.cliente_id=cl.id WHERE o.id=?", (id,))
+    c.execute("SELECT o.*, cl.nombre as cliente_nombre, cl.telefono as cliente_tel, cl.correo as cliente_correo, cl.nit as cliente_nit FROM ordenes o JOIN clientes cl ON o.cliente_id=cl.id WHERE o.id=%s", (id,))
     orden = dict(c.fetchone())
-    c.execute("SELECT * FROM clientes WHERE id=?", (orden['cliente_id'],))
+    c.execute("SELECT * FROM clientes WHERE id=%s", (orden['cliente_id'],))
     cliente = dict(c.fetchone())
-    c.execute("SELECT * FROM prendas_orden WHERE orden_id=?", (id,))
+    c.execute("SELECT * FROM prendas_orden WHERE orden_id=%s", (id,))
     prendas = [dict(p) for p in c.fetchall()]
     conn.close()
 
@@ -784,7 +784,8 @@ def configuracion():
     if request.method == 'POST':
         for clave in ['empresa_telefono', 'empresa_correo', 'smtp_servidor',
                       'smtp_puerto', 'smtp_usuario', 'smtp_password']:
-            conn.execute("UPDATE configuracion SET valor=? WHERE clave=?",
+            c2 = conn.cursor()
+            c2.execute("UPDATE configuracion SET valor=%s WHERE clave=%s",
                          (request.form.get(clave, ''), clave))
         conn.commit()
         flash('Configuración guardada', 'success')
@@ -986,11 +987,11 @@ def enviar_correo_orden(orden, cliente, prendas):
 def reenviar_correo(id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT o.*, cl.nombre as cliente_nombre FROM ordenes o JOIN clientes cl ON o.cliente_id=cl.id WHERE o.id=?", (id,))
+    c.execute("SELECT o.*, cl.nombre as cliente_nombre FROM ordenes o JOIN clientes cl ON o.cliente_id=cl.id WHERE o.id=%s", (id,))
     orden = dict(c.fetchone())
-    c.execute("SELECT * FROM clientes WHERE id=?", (orden['cliente_id'],))
+    c.execute("SELECT * FROM clientes WHERE id=%s", (orden['cliente_id'],))
     cliente = dict(c.fetchone())
-    c.execute("SELECT * FROM prendas_orden WHERE orden_id=?", (id,))
+    c.execute("SELECT * FROM prendas_orden WHERE orden_id=%s", (id,))
     prendas = [dict(p) for p in c.fetchall()]
     conn.close()
 
@@ -1001,7 +1002,11 @@ def reenviar_correo(id):
     return jsonify({'success': resultado})
 
 # Inicializar DB siempre (local y Railway/gunicorn)
-init_db()
+try:
+    init_db()
+    print("✅ Base de datos inicializada correctamente")
+except Exception as e:
+    print(f"⚠️ Error al inicializar DB: {e}")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
@@ -1010,8 +1015,8 @@ if __name__ == "__main__":
     print("  LA SASTRERÍA - Sistema de Gestión")
     print("=" * 50)
     print("  Usuarios:")
-    print("  • erick  / TEMP1  (Dueño)")
-    print("  • keila  / TEMP2  (Admin)")
+    print("  • erick  / Sastreria2024!Erick  (Dueño)")
+    print("  • keila  / Sastreria2024!Keila  (Admin)")
     print("=" * 50)
     print(f"  Acceder en: http://localhost:{port}")
     print("=" * 50)
